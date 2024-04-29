@@ -14,7 +14,7 @@ class CustomEnv(gym.Env):
         super().__init__()
         # Define action and observation space
         self.action_space = spaces.Discrete(8)  # 8 discrete actions
-        self.observation_space = spaces.Box(low=-1, high=2, shape=(4, 172, 300), dtype=np.float32)
+        self.observation_space = spaces.Box(low=0, high=255, shape=(3, 172, 300), dtype=np.uint8)
 
         # Initialize parameters
         self.mapW = 40
@@ -44,7 +44,7 @@ class CustomEnv(gym.Env):
 
         self.reset()
 
-    def reset(self, seed=None):
+    def reset(self, seed=None, options=None):
         # Reset environment
         self.rad = random.choice([self.robot_rad, self.group_rad])
         self.create_obstacles()
@@ -56,10 +56,11 @@ class CustomEnv(gym.Env):
         state = self.get_state()
         self.stack = [state] * self.n_stacks
         info = {}  # Placeholder for additional information, if needed
-        
-        # Cast the observation to float32
-        obs = np.array(self.stack, dtype=np.float32)
+
+        # Cast the observation stack to uint8 and ensure the correct shape
+        obs = np.array(self.stack[:3], dtype=np.uint8)  # Take only the first 3 elements
         return obs, info
+
 
 
     def create_obstacles(self):
@@ -119,6 +120,7 @@ class CustomEnv(gym.Env):
                 break
 
     def get_state(self):
+        
         state = self.grid[self.robot_pos[1] - self.span_y: self.robot_pos[1] + self.span_y + 1,
                             self.robot_pos[0] - self.span_x: self.robot_pos[0] + self.span_x + 1]
         state_resized = cv.resize(state, ((self.span_x*2 + 1)*self.map_ratio, (self.span_y*2 + 1)*self.map_ratio), 
@@ -127,24 +129,24 @@ class CustomEnv(gym.Env):
             
     def step(self, action):
         new_position = self.robot_pos.copy()
-        if action == 0: # move up-left
+        if action == 0:  # move up-left
             new_position[0] -= 1
             new_position[1] -= 1
-        elif action == 1: # move up
+        elif action == 1:  # move up
             new_position[1] -= 1
-        elif action == 2: # move up-right
+        elif action == 2:  # move up-right
             new_position[0] += 1
             new_position[1] -= 1
-        elif action == 3: # move left
+        elif action == 3:  # move left
             new_position[0] -= 1
-        elif action == 4: # move right
+        elif action == 4:  # move right
             new_position[0] += 1
-        elif action == 5: # move down-left
+        elif action == 5:  # move down-left
             new_position[0] -= 1
             new_position[1] += 1
-        elif action == 6: # move down
+        elif action == 6:  # move down
             new_position[1] += 1
-        elif action == 7: # move down-right
+        elif action == 7:  # move down-right
             new_position[0] += 1
             new_position[1] += 1
 
@@ -170,13 +172,14 @@ class CustomEnv(gym.Env):
         self.stack.pop(0)
         self.stack.append(state)
 
+        # Cast observation stack to uint8 and ensure correct shape
+        obs = np.array(self.stack[:3], dtype=np.uint8)  # Take only the first 3 elements
+
         # Placeholder for truncated value, set to False for now
         truncated = False
 
-        # Cast observation to float32
-        obs = np.array(self.stack, dtype=np.float32)
-
         return obs, reward, terminal, truncated, info
+
 
 
     def reachGoal(self, position):
@@ -243,3 +246,4 @@ class CustomEnv(gym.Env):
 
     def close(self):
         cv.destroyAllWindows()
+
